@@ -1,78 +1,8 @@
-<!doctype html>
-<html lang="id">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kenali Tamu VIP</title>
-<style>
-:root{color-scheme:dark;--bg:#14202b;--panel:#1d2c3a;--line:#2e4154;--text:#eef2f5;--mute:#93a4b3;--gold:#e3b95a;--ok:#5ad19a;--bad:#e5806f}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,"Segoe UI",Roboto,sans-serif}
-main{max-width:720px;margin:0 auto;padding:16px}
-h1{font-size:1.3rem;margin:0 0 2px}
-h2{font-size:1rem;margin:18px 0 8px}
-.sub{margin:0 0 14px;color:var(--mute);font-size:.9rem}
-nav{display:flex;gap:8px;margin-bottom:12px}
-button,.btn{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer;min-height:44px}
-button:focus-visible,.btn:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
-button:disabled{opacity:.45;cursor:not-allowed}
-button.on{border-color:var(--gold);color:var(--gold)}
-button.primary{background:var(--gold);color:#1a1a1a;border-color:var(--gold);font-weight:600}
-.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-.stage{position:relative;background:#000;border-radius:12px;overflow:hidden;min-height:220px}
-.stage video,.stage canvas{display:block;width:100%}
-.stage canvas{position:absolute;inset:0;height:100%}
-.msg{color:var(--mute);font-size:.9rem;margin:8px 0}
-.msg.err{color:var(--bad)}
-ul{list-style:none;margin:0;padding:0}
-li{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:6px}
-li small{color:var(--mute);display:block}
-.badge{background:var(--gold);color:#1a1a1a;border-radius:8px;padding:2px 8px;font-size:.8rem;font-weight:600;white-space:nowrap}
-.empty{color:var(--mute);font-size:.9rem}
-[hidden]{display:none!important}
-</style>
-</head>
-<body>
-<main>
-  <h1>Kenali Tamu VIP</h1>
-  <p class="sub">Semua proses berjalan di HP ini. Foto dan data wajah tidak dikirim ke mana pun.</p>
-
-  <nav>
-    <button id="tabCam" class="on">Kamera</button>
-    <button id="tabEnroll">Foto tamu</button>
-  </nav>
-  <p id="status" class="msg">Memuat model AI…</p>
-
-  <section id="camPane">
-    <div class="stage"><video id="video" playsinline muted></video><canvas id="overlay"></canvas></div>
-    <div class="row">
-      <button id="startBtn" class="primary" disabled>Mulai kamera</button>
-      <button id="flipBtn" disabled>Ganti kamera</button>
-    </div>
-    <h2>Terlihat sekarang</h2>
-    <ul id="now"></ul><p id="nowEmpty" class="empty">Belum ada wajah.</p>
-    <h2>Riwayat kedatangan</h2>
-    <ul id="log"></ul><p id="logEmpty" class="empty">Belum ada tamu yang dikenali.</p>
-  </section>
-
-  <section id="enrollPane" hidden>
-    <p class="msg">Pilih satu foto per orang (hanya satu wajah, menghadap depan). Nama file jadi nama tamu, misalnya <b>Widya Wiryawan.jpg</b>. Beberapa foto untuk satu orang boleh, tambahkan angka: <b>Widya Wiryawan 2.jpg</b>.</p>
-    <div class="row">
-      <label class="btn primary" for="files" tabindex="0">Pilih foto…</label>
-      <input id="files" type="file" accept="image/*" multiple hidden>
-      <button id="clearBtn">Hapus semua data</button>
-    </div>
-    <p id="enrollMsg" class="msg"></p>
-    <h2>Sudah terdaftar</h2>
-    <ul id="enrolled"></ul><p id="enrolledEmpty" class="empty">Belum ada foto terdaftar.</p>
-  </section>
-</main>
-
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
 <script>
 const MODEL_URL='https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
-const THRESHOLD=0.5;            // makin kecil = makin ketat
-const CONFIRM_FRAMES=3;         // wajah harus terbaca 3x berturut-turut
+const THRESHOLD=0.6;            // [FIX] Dinaikkan dari 0.5 ke 0.6 agar lebih toleran terhadap cahaya & sudut kamera
+const CONFIRM_FRAMES=2;         // [FIX] Diturunkan dari 3 ke 2 agar responsif dan tidak butuh waktu lama dikenali
 const LOG_COOLDOWN=30000;       // ms sebelum tamu yang sama dicatat lagi
 
 // Daftar tamu dari VIP.pptx + urutan salaman (tindak lanjut no. 4)
@@ -125,7 +55,8 @@ async function enroll(files){
       const r=await faceapi.detectSingleFace(img,new faceapi.TinyFaceDetectorOptions({inputSize:608,scoreThreshold:0.4})).withFaceLandmarks(true).withFaceDescriptor();
       if(!r){bad.push(f.name);continue}
       const g=lookup(cleanName(f.name));
-      store.push({name:g.name,group:g.group,d:Array.from(r.descriptor).map(v=>+v.toFixed(5))});
+      // [FIX] Hapus .map(v=>+v.toFixed(5)) agar presisi vektor wajah utuh dan tidak terpotong
+      store.push({name:g.name,group:g.group,d:Array.from(r.descriptor)});
       ok++;
     }catch(e){bad.push(f.name)}
   }
@@ -169,7 +100,8 @@ async function tick(){
   if(!running)return;
   try{
     if(video.readyState>=2){
-      const res=await faceapi.detectAllFaces(video,new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:0.5})).withFaceLandmarks(true).withFaceDescriptors();
+      // [FIX] Ubah inputSize menjadi 608 (samakan dengan enroll) dan scoreThreshold menjadi 0.4
+      const res=await faceapi.detectAllFaces(video,new faceapi.TinyFaceDetectorOptions({inputSize:608,scoreThreshold:0.4})).withFaceLandmarks(true).withFaceDescriptors();
       draw(res);
     }
   }catch(e){}
@@ -198,7 +130,8 @@ function draw(res){
       }
     }
   });
-  Object.keys(hits).forEach(n=>{if(!seen.includes(n))hits[n]=0});
+  // [FIX] Logika pengurangan hit: kurangi perlahan (-1) alih-alih langsung reset ke 0 jika wajah meleset 1 frame
+  Object.keys(hits).forEach(n=>{if(!seen.includes(n)) hits[n] = Math.max(0, (hits[n] || 0) - 1);});
   renderNow([...new Set(seen)]);
 }
 function personLi(name,extra){
@@ -245,5 +178,3 @@ $('clearBtn').onclick=()=>{if(confirm('Hapus semua foto dan data wajah dari HP i
   }catch(e){setStatus('Model AI gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.',true)}
 })();
 </script>
-</body>
-</html>
