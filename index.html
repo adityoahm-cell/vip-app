@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kenali Tamu VIP</title>
+
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#14202b;
+  --panel:#1d2c3a;
+  --line:#2e4154;
+  --text:#eef2f5;
+  --mute:#93a4b3;
+  --gold:#e3b95a;
+  --ok:#5ad19a;
+  --bad:#e5806f;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font:16px/1.45 system-ui,"Segoe UI",Roboto,sans-serif;
+}
+main{
+  max-width:720px;
+  margin:0 auto;
+  padding:16px;
+}
+h1{
+  font-size:1.3rem;
+  margin:0 0 2px;
+}
+h2{
+  font-size:1rem;
+  margin:18px 0 8px;
+}
+.sub{
+  margin:0 0 14px;
+  color:var(--mute);
+  font-size:.9rem;
+}
+nav{
+  display:flex;
+  gap:8px;
+  margin-bottom:12px;
+}
+button,.btn{
+  font:inherit;
+  color:var(--text);
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px 14px;
+  cursor:pointer;
+  min-height:44px;
+  text-align:center;
+}
+button:focus-visible,.btn:focus-visible,input:focus-visible{
+  outline:2px solid var(--gold);
+  outline-offset:2px;
+}
+button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+button.on{
+  border-color:var(--gold);
+  color:var(--gold);
+}
+button.primary,.btn.primary{
+  background:var(--gold);
+  color:#1a1a1a;
+  border-color:var(--gold);
+  font-weight:600;
+}
+.row{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:10px 0;
+}
+.stage{
+  position:relative;
+  background:#000;
+  border-radius:12px;
+  overflow:hidden;
+  min-height:220px;
+}
+.stage video,.stage canvas{
+  display:block;
+  width:100%;
+}
+.stage canvas{
+  position:absolute;
+  inset:0;
+  height:100%;
+}
+.msg{
+  color:var(--mute);
+  font-size:.9rem;
+  margin:8px 0;
+}
+.msg.err{
+  color:var(--bad);
+}
+ul{
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+li{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px 12px;
+  margin-bottom:6px;
+}
+li small{
+  color:var(--mute);
+  display:block;
+}
+.badge{
+  background:var(--gold);
+  color:#1a1a1a;
+  border-radius:8px;
+  padding:2px 8px;
+  font-size:.8rem;
+  font-weight:600;
+  white-space:nowrap;
+}
+.empty{
+  color:var(--mute);
+  font-size:.9rem;
+}
+[hidden]{
+  display:none!important;
+}
+label.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+</style>
+
+<script>
+/*
+  Error overlay untuk debugging di HP.
+  Jika terjadi error JavaScript, pesan error akan ditampilkan di bawah layar,
+  sehingga tidak hanya blank putih.
+*/
+(function () {
+  function showFatal(message) {
+    var target = document.body || document.documentElement;
+    var box = document.getElementById("__app_error__");
+    if (!box) {
+      box = document.createElement("pre");
+      box.id = "__app_error__";
+      box.style.cssText = [
+        "position:fixed",
+        "left:10px",
+        "right:10px",
+        "bottom:10px",
+        "z-index:999999",
+        "background:#111",
+        "color:#0f0",
+        "padding:10px",
+        "font-size:12px",
+        "line-height:1.35",
+        "white-space:pre-wrap",
+        "border:1px solid #0f0",
+        "border-radius:8px",
+        "max-height:40vh",
+        "overflow:auto"
+      ].join(";");
+      target.appendChild(box);
+    }
+    box.textContent += message + "\n";
+  }
+
+  window.addEventListener("error", function (e) {
+    showFatal(
+      "ERROR: " + (e.message || String(e)) +
+      "\nFile: " + (e.filename || "-") +
+      "\nLine: " + (e.lineno || "-") + ":" + (e.colno || "-")
+    );
+  });
+
+  window.addEventListener("unhandledrejection", function (e) {
+    var msg = e.reason && e.reason.message ? e.reason.message : String(e.reason);
+    showFatal("PROMISE ERROR: " + msg);
+  });
+})();
+</script>
+</head>
+
+<body>
+<main>
+  <h1>Kenali Tamu VIP</h1>
+  <p class="sub">Semua proses berjalan di HP ini. Foto dan data wajah tidak dikirim ke mana pun.</p>
+
+  <nav>
+    <button id="tabCam" class="on">Kamera</button>
+    <button id="tabEnroll">Foto tamu</button>
+  </nav>
+
+  <p id="status" class="msg">Memuat sistem…</p>
+
+  <section id="camPane">
+    <div class="stage">
+      <video id="video" playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+
+    <div class="row">
+      <button id="startBtn" class="primary" disabled>Mulai kamera</button>
+      <button id="flipBtn" disabled>Ganti kamera</button>
+    </div>
+
+    <h2>Terlihat sekarang</h2>
+    <ul id="now"></ul>
+    <p id="nowEmpty" class="empty">Belum ada wajah.</p>
+
+    <h2>Riwayat kedatangan</h2>
+    <ul id="log"></ul>
+    <p id="logEmpty" class="empty">Belum ada tamu yang dikenali.</p>
+  </section>
+
+  <section id="enrollPane" hidden>
+    <p class="msg">
+      Pilih satu foto per orang (hanya satu wajah, menghadap depan). Nama file jadi nama tamu, misalnya
+      <b>Widya Wiryawan.jpg</b>. Beberapa foto untuk satu orang boleh, tambahkan angka:
+      <b>Widya Wiryawan 2.jpg</b>.
+    </p>
+
+    <div class="row">
+      <label class="btn primary" for="files" tabindex="0">Pilih foto…</label>
+      <input id="files" type="file" accept="image/*" multiple hidden>
+      <button id="clearBtn">Hapus semua data</button>
+    </div>
+
+    <p id="enrollMsg" class="msg"></p>
+
+    <h2>Sudah terdaftar</h2>
+    <ul id="enrolled"></ul>
+    <p id="enrolledEmpty" class="empty">Belum ada foto terdaftar.</p>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const video = $("video");
+const canvas = $("overlay");
+const ctx = canvas.getContext("2d");
+
+let store = [];
+let matcher = null;
+let ready = false;
+let running = false;
+let facing = "environment";
+let stream = null;
+
+const hits = {};
+const lastLogged = {};
+
+/*
+  THRESHOLD 0.6 lebih aman untuk kondisi cahaya kamera HP.
+  CONFIRM_FRAMES 2 supaya tidak terlalu lama menunggu.
+*/
+const THRESHOLD = 0.6;
+const CONFIRM_FRAMES = 2;
+const LOG_COOLDOWN = 30000;
+
+const ORDER = {
+  "BOD AI": 1,
+  "Ex BOD AI": 2,
+  "AHM BOD": 3,
+  "AOP BOD": 3,
+  "FIF BOD": 4,
+  "MD": 5
+};
+
+const GUESTS = [
+  ["BOD AI", "Frans Kesuma"],
+  ["BOD AI", "Gidion Hasan"],
+  ["BOD AI", "Santosa"],
+  ["BOD AI", "Gita Tiffani Boer"],
+  ["BOD AI", "Amy Hsu"],
+
+  ["Ex BOD AI", "Djoko Pranoto"],
+  ["Ex BOD AI", "Hamdhani D. Salim"],
+  ["Ex BOD AI", "Widya Wiryawan"],
+  ["Ex BOD AI", "Valentina Chai"],
+  ["Ex BOD AI", "Markus Budiman"],
+  ["Ex BOD AI", "David Budiono"],
+
+  ["AHM BOD", "Octavianus Dwi"],
+  ["AHM BOD", "Steve Kurniawan"],
+  ["AHM BOD", "Thomas Wijaya"],
+  ["AHM BOD", "Rita Prajitno"],
+  ["AOP BOD", "Yusak Kristian"],
+
+  ["FIF BOD", "Indra Gunawan"],
+  ["FIF BOD", "Julius Julianto K"],
+  ["FIF BOD", "Setia Budi Tarigan"],
+  ["FIF BOD", "Esther Sri Harjati"],
+  ["FIF BOD", "Santi"],
+  ["FIF BOD", "Daniel Hartono"],
+
+  ["MD", "Budiarto Karim"],
+  ["MD", "Darwin Karim"],
+  ["MD", "Edward Koharuddin"],
+  ["MD", "Ronny Attan"],
+  ["MD", "Sujono Karim"],
+  ["MD", "Jefri Ali"],
+  ["MD", "N. Indra Permadi"],
+  ["MD", "Suud Pranoto"],
+  ["MD", "Lilis Pranoto"],
+  ["MD", "Lita Wijaya"],
+  ["MD", "Anwar Joesoef"],
+  ["MD", "Budiardjo Adimuljo"],
+  ["MD", "Ferdinand Agung"],
+  ["MD", "Suwito Mawarwati"],
+  ["MD", "Taufik Aulia"]
+].map(([group, name]) => ({
+  group,
+  name,
+  key: name.toLowerCase().replace(/[^a-z0-9]/g, "")
+}));
+
+const FACEAPI_VERSION = "1.7.12";
+
+const FACEAPI_CDN = [
+  `https://cdn.jsdelivr.net/npm/@vladmandic/face-api@${FACEAPI_VERSION}/dist/face-api.js`,
+  `https://unpkg.com/@vladmandic/face-api@${FACEAPI_VERSION}/dist/face-api.js`
+];
+
+const MODEL_URLS = [
+  `https://cdn.jsdelivr.net/npm/@vladmandic/face-api@${FACEAPI_VERSION}/model/`,
+  `https://unpkg.com/@vladmandic/face-api@${FACEAPI_VERSION}/model/`
+];
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function setStatus(t, err) {
+  const s = $("status");
+  s.textContent = t;
+  s.className = "msg" + (err ? " err" : "");
+}
+
+/* ---------- penyimpanan ---------- */
+
+function storageAvailable() {
+  try {
+    const key = "__vip_storage_test__";
+    localStorage.setItem(key, "1");
+    localStorage.removeItem(key);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+const canStore = storageAvailable();
+
+function load() {
+  store = [];
+  if (!canStore) return;
+
+  try {
+    const raw = localStorage.getItem("vipFaces");
+    const parsed = raw ? JSON.parse(raw) : [];
+    store = Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    store = [];
+  }
+}
+
+function save() {
+  if (!canStore) {
+    setStatus("Penyimpanan browser tidak tersedia. Data hanya aktif selama halaman dibuka.", true);
+    return;
+  }
+
+  try {
+    localStorage.setItem("vipFaces", JSON.stringify(store));
+  } catch (e) {
+    setStatus("Gagal menyimpan data. Penyimpanan mungkin penuh atau diblokir browser.", true);
+  }
+}
+
+function rebuildMatcher() {
+  if (typeof faceapi === "undefined") {
+    matcher = null;
+    return;
+  }
+
+  const by = {};
+
+  store.forEach(s => {
+    if (s && s.name && Array.isArray(s.d) && s.d.length === 128) {
+      if (!by[s.name]) by[s.name] = [];
+      by[s.name].push(new Float32Array(s.d));
+    }
+  });
+
+  const labeled = Object.keys(by).map(name => {
+    return new faceapi.LabeledFaceDescriptors(name, by[name]);
+  });
+
+  matcher = labeled.length ? new faceapi.FaceMatcher(labeled, THRESHOLD) : null;
+}
+
+function groupOf(name) {
+  const s = store.find(x => x.name === name);
+  return s ? s.group : "Tamu lain";
+}
+
+/* ---------- helper nama ---------- */
+
+function cleanName(fn) {
+  return String(fn || "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s*\(\d+\)\s*$/, "")
+    .replace(/\s+\d+$/, "")
+    .trim();
+}
+
+function lookup(name) {
+  const raw = String(name || "").trim();
+  const k = raw.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  let g = GUESTS.find(x => x.key === k);
+
+  if (!g && k.length >= 4) {
+    g = GUESTS.find(x => x.key.includes(k) || k.includes(x.key));
+  }
+
+  return g ? { name: g.name, group: g.group } : { name: raw, group: "Tamu lain" };
+}
+
+function detectionOptions() {
+  return new faceapi.TinyFaceDetectorOptions({
+    inputSize: 608,
+    scoreThreshold: 0.4
+  });
+}
+
+/* ---------- pendaftaran manual ---------- */
+
+async function enroll(files) {
+  if (!ready) {
+    setStatus("Aplikasi belum siap.", true);
+    return;
+  }
+
+  const msg = $("enrollMsg");
+  const bad = [];
+  let ok = 0;
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+
+    msg.className = "msg";
+    msg.textContent = `Memproses foto ${i + 1} dari ${files.length}…`;
+
+    try {
+      const img = await faceapi.bufferToImage(f);
+
+      const r = await faceapi
+        .detectSingleFace(img, detectionOptions())
+        .withFaceLandmarks(true)
+        .withFaceDescriptor();
+
+      if (!r) {
+        bad.push(f.name);
+        continue;
+      }
+
+      const g = lookup(cleanName(f.name));
+
+      store.push({
+        name: g.name,
+        group: g.group,
+        d: Array.from(r.descriptor)
+      });
+
+      ok++;
+    } catch (e) {
+      bad.push(f.name);
+    }
+  }
+
+  save();
+  rebuildMatcher();
+  renderEnrolled();
+
+  msg.className = "msg" + (bad.length ? " err" : "");
+  msg.textContent =
+    ok + " foto berhasil didaftarkan." +
+    (bad.length
+      ? " Wajah tidak terbaca di: " + bad.join(", ") + ". Coba foto yang lebih jelas."
+      : "");
+}
+
+function renderEnrolled() {
+  const ul = $("enrolled");
+  ul.textContent = "";
+
+  const by = {};
+
+  store.forEach(s => {
+    if (!by[s.name]) {
+      by[s.name] = { group: s.group, n: 0 };
+    }
+    by[s.name].n++;
+  });
+
+  Object.keys(by).sort().forEach(name => {
+    const li = el("li");
+    const box = el("div");
+
+    box.append(
+      el("span", null, name),
+      el("small", null, `${by[name].group} · ${by[name].n} foto`)
+    );
+
+    const b = el("button", null, "Hapus");
+
+    b.onclick = () => {
+      store = store.filter(s => s.name !== name);
+      save();
+      rebuildMatcher();
+      renderEnrolled();
+    };
+
+    li.append(box, b);
+    ul.append(li);
+  });
+
+  $("enrolledEmpty").hidden = store.length > 0;
+}
+
+/* ---------- kamera & pengenalan ---------- */
+
+async function startCam() {
+  if (!ready) {
+    setStatus("Aplikasi belum siap.", true);
+    return;
+  }
+
+  if (!window.isSecureContext || !navigator.mediaDevices) {
+    setStatus("Kamera butuh alamat HTTPS. Buka lewat GitHub Pages atau hosting HTTPS.", true);
+    return;
+  }
+
+  stopCam();
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: facing },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    });
+
+    video.srcObject = stream;
+    await video.play();
+
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+
+    running = true;
+    $("flipBtn").disabled = false;
+    $("startBtn").textContent = "Hentikan kamera";
+
+    setStatus(
+      matcher
+        ? "Kamera aktif. Arahkan ke tamu."
+        : "Kamera aktif, tapi belum ada foto tamu terdaftar (tab Foto tamu)."
+    );
+
+    tick();
+  } catch (e) {
+    setStatus("Kamera tidak bisa dibuka: izinkan akses kamera di browser.", true);
+  }
+}
+
+function stopCam() {
+  running = false;
+
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+
+  video.srcObject = null;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  $("startBtn").textContent = "Mulai kamera";
+
+  Object.keys(hits).forEach(k => hits[k] = 0);
+
+  renderNow([]);
+}
+
+async function tick() {
+  if (!running) return;
+
+  try {
+    if (video.readyState >= 2) {
+      const res = await faceapi
+        .detectAllFaces(video, detectionOptions())
+        .withFaceLandmarks(true)
+        .withFaceDescriptors();
+
+      draw(res);
+    }
+  } catch (e) {
+    /*
+      Error deteksi per-frame diabaikan agar kamera tetap berjalan.
+      Error fatal sudah ditangani error overlay.
+    */
+  }
+
+  setTimeout(tick, 120);
+}
+
+function draw(res) {
+  if (canvas.width !== video.videoWidth) {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const fs = Math.max(16, Math.round(canvas.width / 38));
+  const seen = [];
+  const now = Date.now();
+
+  ctx.font = "600 " + fs + "px system-ui,sans-serif";
+  ctx.lineWidth = Math.max(2, fs / 6);
+  ctx.textBaseline = "top";
+
+  res.forEach(r => {
+    const b = r.detection.box;
+    const m = matcher ? matcher.findBestMatch(r.descriptor) : null;
+    const known = m && m.label !== "unknown";
+
+    const label = known ? m.label : "Tidak dikenal";
+    const color = known ? "#5ad19a" : "#93a4b3";
+
+    ctx.strokeStyle = color;
+    ctx.strokeRect(b.x, b.y, b.width, b.height);
+
+    const w = ctx.measureText(label).width + 12;
+    const y = Math.max(0, b.y - fs - 10);
+
+    ctx.fillStyle = color;
+    ctx.fillRect(b.x, y, w, fs + 10);
+
+    ctx.fillStyle = "#10202b";
+    ctx.fillText(label, b.x + 6, y + 5);
+
+    if (known) {
+      seen.push(m.label);
+      hits[m.label] = (hits[m.label] || 0) + 1;
+
+      if (
+        hits[m.label] >= CONFIRM_FRAMES &&
+        (!lastLogged[m.label] || now - lastLogged[m.label] > LOG_COOLDOWN)
+      ) {
+        lastLogged[m.label] = now;
+        addLog(m.label);
+      }
+    }
+  });
+
+  Object.keys(hits).forEach(n => {
+    if (!seen.includes(n)) {
+      hits[n] = Math.max(0, (hits[n] || 0) - 1);
+    }
+  });
+
+  renderNow([...new Set(seen)]);
+}
+
+function personLi(name, extra) {
+  const g = groupOf(name) || "Tamu lain";
+  const o = ORDER[g];
+
+  const li = el("li");
+  const box = el("div");
+
+  box.append(
+    el("span", null, name),
+    el("small", null, g + (extra ? " · " + extra : ""))
+  );
+
+  li.append(box);
+
+  if (o) {
+    li.append(el("span", "badge", "Salaman ke-" + o));
+  }
+
+  return li;
+}
+
+function renderNow(names) {
+  const ul = $("now");
+  ul.textContent = "";
+
+  names.forEach(n => ul.append(personLi(n)));
+
+  $("nowEmpty").hidden = names.length > 0;
+}
+
+function addLog(name) {
+  const t = new Date().toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+
+  $("log").prepend(personLi(name, t));
+  $("logEmpty").hidden = true;
+
+  while ($("log").children.length > 50) {
+    $("log").lastChild.remove();
+  }
+
+  if (navigator.vibrate) navigator.vibrate(80);
+}
+
+/* ---------- UI ---------- */
+
+function showTab(cam) {
+  $("camPane").hidden = !cam;
+  $("enrollPane").hidden = cam;
+
+  $("tabCam").classList.toggle("on", cam);
+  $("tabEnroll").classList.toggle("on", !cam);
+}
+
+$("tabCam").onclick = () => showTab(true);
+$("tabEnroll").onclick = () => showTab(false);
+
+$("startBtn").onclick = () => {
+  if (running) stopCam();
+  else startCam();
+};
+
+$("flipBtn").onclick = () => {
+  facing = facing === "environment" ? "user" : "environment";
+  startCam();
+};
+
+$("files").onchange = e => {
+  const f = Array.from(e.target.files || []);
+  e.target.value = "";
+
+  if (f.length) {
+    enroll(f).catch(err => {
+      const msg = $("enrollMsg");
+      msg.className = "msg err";
+      msg.textContent = "Gagal memproses foto: " + (err.message || String(err));
+    });
+  }
+};
+
+$("clearBtn").onclick = () => {
+  if (confirm("Hapus semua foto dan data wajah dari HP ini?")) {
+    store = [];
+    save();
+    rebuildMatcher();
+    renderEnrolled();
+    $("enrollMsg").textContent = "Semua data dihapus.";
+  }
+};
+
+Array.from(document.querySelectorAll("label[for]")).forEach(label => {
+  label.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const input = document.getElementById(label.htmlFor);
+      if (input) input.click();
+    }
+  });
+});
+
+/* ---------- loader pustaka AI ---------- */
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.async = true;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error("Gagal memuat " + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function loadFaceApi() {
+  let lastError;
+
+  for (const src of FACEAPI_CDN) {
+    try {
+      await loadScript(src);
+
+      if (window.faceapi) {
+        return;
+      }
+
+      lastError = new Error("Script dimuat tetapi faceapi tidak tersedia.");
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  throw lastError || new Error("Gagal memuat face-api.");
+}
+
+async function loadModels() {
+  let lastError;
+
+  for (const url of MODEL_URLS) {
+    try {
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(url),
+        faceapi.nets.faceLandmark68TinyNet.loadFromUri(url),
+        faceapi.nets.faceRecognitionNet.loadFromUri(url)
+      ]);
+
+      return;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  throw lastError || new Error("Gagal memuat model AI.");
+}
+
+/* ---------- init ---------- */
+
+(async function init() {
+  load();
+  renderEnrolled();
+
+  setStatus("Memuat pustaka AI…");
+
+  try {
+    await loadFaceApi();
+
+    setStatus("Memuat model AI…");
+
+    await loadModels();
+
+    rebuildMatcher();
+
+    ready = true;
+    $("startBtn").disabled = false;
+
+    setStatus(
+      store.length
+        ? "Siap. " + store.length + " foto terdaftar."
+        : "Siap. Daftarkan foto tamu dulu di tab Foto tamu."
+    );
+  } catch (e) {
+    setStatus("Gagal memuat aplikasi: " + (e.message || String(e)), true);
+  }
+})();
+</script>
+</body>
+</html>
